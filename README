@@ -1,0 +1,323 @@
+TerraPilot 1.0 — Fouilles, engins, incertitudes et suivi
+Application pédagogique en français — 29 octobre 2026
+
+OBJECTIF
+
+Préparer un métré de fouille, comparer des moyens de travail, simuler les délais
+et les coûts, puis suivre les quantités réellement déclarées. Public : étudiants
+en génie civil, notamment pour un exercice de probabilités appliquées.
+
+Six rubriques : Vue d'ensemble, Chantiers, Fouilles et engins, Simulations,
+Suivi des travaux, Guide et exports. Accueil direct, sans connexion.
+Identité visuelle : sable clair, vert profond et cuivre. Les cartes de chantiers
+s'ouvrent par leurs boutons ; le menu se replie sur les petits écrans.
+
+Le dossier livré contient uniquement app.py, requirement.text et README.
+Tout le code, le HTML/CSS, les dessins et les calculs sont dans app.py.
+Les tests, captures, données persistantes et archives sont ailleurs.
+
+INSTALLATION WINDOWS / VS CODE
+
+Ouvrir ce dossier dans VS Code puis Terminal > Nouveau terminal :
+
+    cd "C:\Users\FIFEN HOUSSEIN\Desktop\APP\terrapilot"
+    python -m pip install -r requirement.text
+    python -m streamlit run app.py
+
+Pour retrouver explicitement la présentation claire prévue :
+
+    python -B -m streamlit run app.py --theme.base light
+
+Le terminal donne l'URL locale, souvent http://localhost:8501/.
+Le lancement préparé pour cette livraison peut utiliser un autre port libre.
+Ctrl+C arrête un serveur lancé dans le terminal. -B évite les fichiers __pycache__.
+Ne pas lancer avec seulement python app.py : les composants nécessitent Streamlit.
+
+Bibliothèques :
+- Streamlit : interface, formulaires, import/export et tests d'interface.
+- NumPy : tirages aléatoires et calculs vectoriels.
+- pandas : tableaux et CSV UTF-8.
+- SciPy : corrélations de rang de Spearman.
+- Plotly : coupe, plan, distributions et suivi interactifs.
+- Pillow : lecture, réduction et normalisation des photos en JPEG sans métadonnées.
+- openpyxl : classeur Excel.
+- ReportLab : rapport PDF avec polices embarquées et coupe vectorielle.
+sqlite3, json, pathlib, datetime et hashlib font partie de Python.
+Les bornes de versions sont dans requirement.text ; la version contrôlée est
+Python 3.14 avec Streamlit 1.65. Aucun service payant, compte ou clé API nécessaire.
+
+PREMIER ESSAI
+
+Cliquer Charger l'exemple fictif dans le menu. Il contient deux chantiers :
+TP-0001 Villa Horizon à Yaoundé et TP-0002 Atelier Delta à Douala.
+Les localisations, couches, rendements, prix et relevés sont tous fictifs.
+Ils ne représentent aucune mesure locale ni tarif conseillé.
+
+L'exemple est séparé de Mes chantiers et reste dans la session du navigateur.
+Le bouton Charger l'exemple fictif réinitialise les modifications de cet espace.
+Le choix d'espace conserve la séparation entre exemples et mesures personnelles.
+
+Pour changer de chantier : Vue d'ensemble ou Chantiers > Ouvrir TP-xxxx.
+La fiche active figure en haut et dans le menu. Tous les outils utilisent cette
+fiche : géométrie, engins, simulation et journal.
+
+1. FICHE DU CHANTIER
+
+Saisir nom, localisation, début, budget de fouille en FCFA, échéance exprimée
+en jours ouvrés équivalents, nature du sol observée et notes. La profondeur
+d'eau est facultative : cocher seulement si elle est connue.
+Les couches se modifient dans un tableau : nom et épaisseur en mètres,
+de 1 à 10 couches. Ces descriptions ne sont pas un diagnostic géotechnique.
+Une photo JPEG/PNG/WebP de 5 Mo maximum peut être jointe ; elle est réduite
+et conservée dans la base et la sauvegarde complète.
+
+Le mode semelle et les dimensions se règlent ensuite dans Fouilles et engins.
+Aucune profondeur de fondation, portance ou pente admissible n'est déduite
+automatiquement d'un nom de sol. Les conditions de sécurité d'une fouille
+nécessitent une appréciation adaptée qui n'est pas réalisée par cette application.
+
+2. METRE DES FOUILLES
+
+Mode Fouille rectangulaire : L et l sont les dimensions au fond de la fouille.
+Mode Semelle avec espace de travail : L et l sont les dimensions en plan de
+la semelle. L'espace e est ajouté de chaque côté : fond = (L+2e) x (l+2e).
+Dans les deux modes, H est la profondeur de fouille, pas une profondeur calculée.
+N représente des fouilles strictement identiques ; leurs volumes s'additionnent.
+
+Le coefficient de talus m est une géométrie saisie : m mètres horizontaux
+pour un mètre vertical. Le haut s'élargit de 2mH dans chaque direction.
+m=0 représente des parois verticales pour le métré, sans affirmation de stabilité.
+
+    V_unitaire = H / 6 x (A_fond + 4 x A_milieu + A_surface)
+    A_fond = L_fond x l_fond
+    A_milieu = (L_fond+mH) x (l_fond+mH)
+    A_surface = (L_fond+2mH) x (l_fond+2mH)
+    V_en_place = N x V_unitaire
+
+Cette intégration est exacte pour des côtés variant linéairement avec la hauteur.
+Sans talus : V = L_fond x l_fond x H x N.
+Les emprises affichées sont des sommes géométriques, sans gestion de recouvrement.
+La coupe transversale et le plan représentent une fouille ; N multiplie le métré.
+
+    V_foisonne = V_en_place x (1 + foisonnement / 100)
+
+Le volume foisonné sert au transport ; il ne multiplie pas le temps d'excavation,
+puisque le rendement est exprimé en m³ de terrain en place par heure active.
+Le coefficient de foisonnement est une hypothèse saisie, pas une table de sol.
+
+3. ENGINS ET COUTS
+
+Chaque chantier possède de 1 à 8 moyens de travail modifiables, y compris une
+équipe manuelle. Pour chacun : rendement minimum, habituel, maximum (m³/h),
+tarif horaire FCFA/h, litres par heure active, prix FCFA/L et carburant inclus.
+Les trois rendements doivent respecter minimum <= habituel <= maximum et être
+strictement positifs. Le moyen retenu sert aux prévisions de la fiche.
+
+    Temps actif = V_en_place / rendement_habituel
+    Jours ouvres equivalents = temps_actif / heures_disponibles_par_jour
+    Litres = temps_actif x consommation_horaire
+    Cout travail = temps_actif x tarif_horaire
+    Cout carburant = 0 si inclus, sinon litres x prix_carburant
+    Cout transport = V_foisonne x prix_transport_par_m3_foisonne
+    Cout total = travail + carburant non inclus + transport + frais fixes
+
+Les frais fixes et le transport sont communs aux moyens d'un même chantier.
+Le carburant inclus n'est jamais compté une seconde fois.
+Le coût théorique ne comprend pas d'arrêt aléatoire.
+Les prix initiaux sont entièrement fictifs et ne comprennent pas de taxe ajoutée
+automatiquement. Ajuster les valeurs au périmètre de ton exercice.
+
+4. SIMULATION MONTE-CARLO
+
+Un scénario représente l'intégralité du chantier. Le rendement global Q peut être :
+- triangulaire : minimum, habituel = mode, maximum ;
+- uniforme : entre minimum et maximum, densité constante ;
+- fixe : égal au rendement habituel.
+Si les trois valeurs sont identiques, le rendement est constant.
+
+Un arrêt agrégé est tiré avec la probabilité p saisie. Lorsqu'il survient,
+sa durée D est uniforme entre les deux bornes. Sinon D=0. Il s'agit d'un seul
+événement par chantier, pas d'une fréquence quotidienne ni d'une prévision météo.
+L'arrêt et le rendement sont supposés indépendants.
+
+    Temps actif = V / Q
+    Temps total = V / Q + D
+    Jours ouvres = temps_total / heures_par_jour
+    Cout attente = D x fraction_tarif_attente x tarif_horaire
+    Cout simule = cout_travail(Q) + carburant_non_inclus(Q)
+                  + cout_attente + transport + frais_fixes
+
+Le carburant n'est consommé que pendant les heures actives. Les frais fixes
+et le transport ne sont pas refacturés à chaque heure ou à chaque arrêt.
+Choisir la fraction d'attente selon l'hypothèse de facturation de l'exercice.
+
+De 1 000 à 100 000 scénarios ; graine pour reproduire les mêmes tirages.
+Les probabilités sont des fréquences de dépassement STRICT de l'échéance ou
+du budget. P10/P50/P90 sont des quantiles empiriques, pas des garanties.
+Les intervalles de Wilson à 95 % décrivent l'erreur d'échantillonnage Monte-Carlo,
+pas la validité des hypothèses. Zéro dépassement ne prouve pas un risque réel nul.
+La sensibilité est une corrélation de rang de Spearman ; vide si constante.
+Elle n'est pas une décomposition causale du risque ou de la variance.
+
+Le modèle ne calcule pas la probabilité d'effondrement, la portance ou une
+conformité réglementaire. Aucune donnée météo réelle n'est utilisée.
+Les durées ne sont pas converties automatiquement en dates : elles sont des
+équivalents ouvrés, sans calendrier des week-ends, congés ou jours fériés.
+Les simulations portent sur le volume total planifié, pas sur le reste à faire.
+Toute modification de la fiche masque les anciens résultats jusqu'à relance.
+Les résultats restent en session ; exporter le rapport/CSV pour les conserver.
+
+5. JOURNAL DES TRAVAUX
+
+Un relevé contient les quantités de cette intervention, pas des cumuls : date,
+volume en place, heures actives, heures d'arrêt, litres, dépense totale, moyen
+réellement utilisé et note. Plusieurs interventions distinctes un jour sont possibles.
+Un volume positif nécessite un temps actif positif. Chaque relevé est limité
+à 24 heures actives + arrêt. La date doit être entre le début et aujourd'hui.
+Des relevés qui se chevauchent ne sont pas détectés : renseigner les heures
+d'engin/intervention de façon cohérente, sans les confondre avec des effectifs.
+
+Les totaux sont cumulés. Rendement observé = volume total / heures actives totales.
+Avancement = volume total réalisé / volume planifié. Un dépassement de 100 %
+est signalé et conservé. La courbe financière compare les dépenses cumulées
+au budget ; les dépenses déclarées ne sont pas recalculées avec les tarifs.
+La consommation saisie n'est pas ajoutée une deuxième fois à la dépense totale.
+On peut corriger un relevé et le supprimer avec confirmation explicite.
+
+Import CSV : télécharger le modèle, remplir exactement ses 7 colonnes :
+date;volume_m3;heures_actives;heures_arret;carburant_l;depense_fcfa;note
+Dates AAAA-MM-JJ, décimales point ou virgule, séparateur point-virgule conseillé.
+Le moyen porte la mention Import CSV ; il peut être corrigé ensuite.
+L'import vérifie toutes les lignes avant ajout. Il refuse les doublons exacts
+et ne fait aucun ajout partiel en cas d'erreur. 2 Mo, 1 000 lignes maximum.
+Le journal CSV exporté pour analyse contient aussi les ID et le moyen : utiliser
+le modèle à 7 colonnes, plutôt que ce journal étendu, pour une nouvelle saisie.
+
+6. EXPORTS ET CONSERVATION
+
+- PDF : géométrie, coupe, coût, synthèse réelle et résultats simulés si actuels.
+- Excel : projet, comparaison des engins, journal et synthèse de simulation.
+- CSV : journal et totalité des scénarios simulés, disponibles séparément.
+- JSON : sauvegarde complète des projets, moyens, photos, paramètres et relevés.
+
+Restaurer ajoute des copies avec de nouveaux identifiants et leurs relevés liés.
+L'origine fictive d'une sauvegarde est indiquée ; les sauvegardes fictives ne
+peuvent être restaurées que dans l'espace fictif. Ne pas additionner des copies
+restaurées comme si elles étaient de nouvelles mesures indépendantes.
+
+Mes chantiers est conservé dans :
+Windows : Documents\Codex\data\terrapilot\terrapilot.sqlite3 du profil actif.
+Linux : ~/.local/share/terrapilot/terrapilot.sqlite3.
+TERRAPILOT_DATA_DIR peut définir un autre dossier hors de l'application.
+Écritures SQLite transactionnelles et numéro de révision : une session ancienne
+ne peut pas écraser silencieusement une modification d'une autre session.
+Limites pédagogiques : 30 chantiers, 8 moyens/chantier, 3 000 relevés, registre 15 Mo.
+
+Sur Streamlit Community Cloud ou un disque éphémère, les fichiers locaux peuvent
+disparaître lors d'une reconstruction. Télécharger régulièrement une sauvegarde.
+Cette version ne contient pas de base distante, d'authentification ni de PWA.
+Sur un serveur partagé, Mes chantiers est le registre commun de ce serveur.
+Ne pas y déposer des informations confidentielles pour une démonstration publique.
+Aucune photo n'est envoyée à un service d'intelligence artificielle.
+
+GITHUB ET STREAMLIT COMMUNITY CLOUD
+
+Community Cloud attend le nom standard requirements.txt. Conserver requirement.text
+dans le dossier livré et préparer une copie de déploiement séparée :
+
+    New-Item -ItemType Directory -Path ..\terrapilot-deploiement
+    Copy-Item .\app.py ..\terrapilot-deploiement\app.py
+    Copy-Item .\requirement.text ..\terrapilot-deploiement\requirements.txt
+    Copy-Item .\README ..\terrapilot-deploiement\README
+    cd ..\terrapilot-deploiement
+
+Créer d'abord un dépôt GitHub vide, par exemple terrapilot, sans README automatique.
+L'URL suivante est un exemple de dépôt à créer sur ton compte, pas un dépôt créé
+par cette livraison. Dans le terminal VS Code du dossier de déploiement :
+
+    git init
+    git add .
+    git commit -m "Premiere version de TerraPilot"
+    git branch -M main
+    git remote add origin https://github.com/gc7258728-cmyk/terrapilot.git
+    git remote -v
+    git push -u origin main
+
+Si origin existe déjà, vérifier git remote -v avant d'utiliser git remote set-url.
+Sur Streamlit Community Cloud : créer une app, sélectionner dépôt, branche main
+et fichier principal app.py. Pour Paste URL, fournir l'URL DU FICHIER :
+    https://github.com/gc7258728-cmyk/terrapilot/blob/main/app.py
+Choisir une version Python compatible, par exemple 3.14 utilisée lors des essais.
+Le lien public est fourni après déploiement ; localhost reste un lien local.
+
+Pour mettre à jour : modifier app.py dans la copie de déploiement puis :
+    git status
+    git add .
+    git commit -m "Mise a jour TerraPilot"
+    git push
+
+Si les dépendances changent, actualiser requirements.txt dans la copie de
+déploiement. Consulter Manage app et les logs en cas d'erreur. Un simple reboot
+ne remplace pas un fichier de dépendances correctement nommé.
+
+EXEMPLES A VERIFIER
+
+A. Fouille verticale : L=10, l=2, H=1,5, N=1, talus=0, foisonnement=20 %.
+   Volume en place 30 m³ ; foisonné 36 m³ ; emprise 20 m².
+B. Même fouille, talus m=0,5 : haut 11,5 x 3,5 m ; volume 44,625 m³.
+C. Mode semelle, L=10, l=2, espace=0,5 m, H=1,5, N=2, talus=0 :
+   fond 11 x 3 m ; volume total 99 m³.
+D. Exemple A, rendement 5 m³/h, tarif 20 000 FCFA/h, 4 L/h,
+   carburant inclus, 8 h/j, frais fixes et transport nuls :
+   6 h actives ; 0,75 j ouvré ; 24 L ; total 120 000 FCFA.
+E. Décocher carburant inclus, prix fictif 1 000 FCFA/L : total 144 000 FCFA.
+F. Simulation Fixe, arrêt 0 % : toutes les durées 0,75 j et coûts 120 000 FCFA.
+G. Fixe, arrêt 100 %, durée mini=maxi=2 h, attente 25 % :
+   8 h totales, 1 jour ouvré, coût 130 000 FCFA, carburant toujours 24 L.
+H. Loi uniforme Q entre 4 et 6 m³/h, arrêt 0 %, échéance 0,875 j=7 h :
+   P(T>7h)=P(Q<30/7)=1/7, soit environ 14,29 %. Avec 100 000 tirages,
+   la fréquence devrait être proche, avec une fluctuation d'échantillonnage.
+I. Exemple chargé : 10 m³ en 2 h, arrêt 0,5 h, 8 L, coût 45 000 FCFA.
+   Avancement 33,33 %, rendement observé 5 m³/h, dépenses 45 000 FCFA.
+   Ajouter 5 m³ en 1 h et 20 000 FCFA : 50 %, 5 m³/h et 65 000 FCFA.
+J. Exporter un JSON puis restaurer dans l'espace fictif : des copies liées sont
+   ajoutées ; les originaux demeurent. Revenir à Mes chantiers : aucun exemple
+   ne doit avoir été ajouté au registre réel.
+
+SOURCES
+
+INRS, ressource documentaire sur les dangers de fouilles, sans transposition
+de règles françaises comme validation locale :
+https://portaildocumentaire.inrs.fr/Default/doc/SYRACUSE/172358/les-fouilles-en-tranchee-ensevelissement?_lg=fr-FR
+Documentation officielle Streamlit sur les dépendances :
+https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/app-dependencies
+
+VERIFICATIONS DE LIVRAISON
+
+Contrôles terminés le 29 octobre 2026 sous Windows, Python 3.14, Streamlit 1.65.
+
+- 15 tests automatisés réussis : volume rectangulaire, formule avec talus,
+  semelle avec espace de travail et plusieurs fouilles, carburant inclus/non
+  inclus, invalidités et valeurs non finies, cas fixe de simulation, facturation
+  de l'arrêt, probabilité analytique retrouvée avec 100 000 tirages, suivi,
+  import CSV atomique/doublons, photos, exports, sauvegardes et révisions SQLite.
+- Les six rubriques ont été parcourues avec Streamlit AppTest sans exception.
+- Parcours complet dans Edge automatisé à 1 440 px et 320 px : modification de
+  la profondeur puis retour au cas de référence, changement du mode de facturation
+  du carburant, simulation fixe et triangulaire à 100 000 scénarios, ajout et
+  correction d'un relevé, import CSV, création de chantier avec photo et eau
+  observée, exports PDF/Excel/CSV/JSON, restauration et séparation des espaces.
+- Contrôle supplémentaire des six rubriques à 768 et 390 px ; vérification du
+  menu repliable, absence de débordement horizontal global et de texte coupé
+  dans les éléments personnalisés. Captures ordinateur/téléphone inspectées.
+- PDF exporté rendu en images et inspecté ; les deux pages respectent les marges.
+- Les valeurs et contenus des téléchargements PDF/Excel/CSV/JSON ont été contrôlés.
+  Les scénarios exportés comptent 100 000 lignes ; le relevé importé et la photo
+  sont présents dans la sauvegarde avec le chantier correspondant.
+- Le registre réel est vide à la livraison ; les essais utilisent uniquement
+  l'espace fictif et des bases temporaires séparées.
+
+Restent à essayer sur tes appareils : la prise de photo avec ton propre téléphone
+et le confort tactile sur un appareil physique. Les contrôles mobiles ci-dessus
+utilisent des tailles d'écran simulées. Aucun déploiement public, mesure de
+terrain réelle ou validation géotechnique n'a été effectué.
